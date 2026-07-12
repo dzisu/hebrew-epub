@@ -1,5 +1,12 @@
 import { Frontmatter } from "@/app/page";
 
+function apiPath(path: string) {
+  if (typeof window === "undefined") return path;
+  return window.location.pathname.startsWith("/hebrew-epub")
+    ? `/hebrew-epub${path}`
+    : path;
+}
+
 export function makeProgressPercent(e: {
   total: number;
   loaded: number;
@@ -55,7 +62,7 @@ export function bookRequest(
     },
     false,
   );
-  xhr.open("POST", "/api/book");
+  xhr.open("POST", apiPath("/api/book"));
   xhr.send(formData);
   function cancel() {
     xhr.abort();
@@ -104,7 +111,7 @@ export function uploadDoc(
     },
     false,
   );
-  xhr.open("POST", "/api/file");
+  xhr.open("POST", apiPath("/api/file"));
   xhr.send(formData);
   function cancel() {
     xhr.abort();
