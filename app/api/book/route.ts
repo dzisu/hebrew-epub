@@ -157,6 +157,7 @@ function normalizePackageDocument(epubDir: string) {
   let opf = fs.readFileSync(opfFile, "utf-8");
 
   opf = opf
+    .replace(/<dc:language>[^<]*<\/dc:language>/, "<dc:language>he</dc:language>")
     .replace(
       /<spine\b(?![^>]*\spage-progression-direction=)([^>]*)>/,
       '<spine page-progression-direction="rtl"$1>',
@@ -182,6 +183,10 @@ function normalizePackageDocument(epubDir: string) {
       "",
     );
 
+  if (!/<dc:language>/.test(opf)) {
+    opf = opf.replace(/(<metadata\b[^>]*>)/, "$1\n    <dc:language>he</dc:language>");
+  }
+
   fs.writeFileSync(opfFile, opf, "utf-8");
 }
 
@@ -194,7 +199,13 @@ function normalizeXhtmlFiles(epubDir: string) {
         /<html\b[^>]*>/,
         '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" dir="rtl" xml:lang="he" lang="he">',
       )
-      .replace(/<body(?![^>]*\sdir=)/, '<body dir="rtl"');
+      .replace(/<body\b([^>]*)>/i, (_match, attrs = "") =>
+        `<body${forceAttributes(attrs, {
+          dir: "rtl",
+          "xml:lang": "he",
+          lang: "he",
+        })}>`,
+      );
 
     if (filePath.includes(`${path.sep}text${path.sep}`)) {
       xhtml = xhtml.replace(/\s+id="[^"]*"/g, "");
@@ -234,8 +245,23 @@ function addAttributes(attrs: string, additions: Record<string, string>) {
   );
 }
 
+function forceAttributes(attrs: string, additions: Record<string, string>) {
+  return Object.entries(additions).reduce(
+    (current, [name, value]) => setAttribute(current, name, value),
+    attrs,
+  );
+}
+
 function ensureAttribute(attrs: string, name: string, value: string) {
   if (new RegExp(`\\s${escapeRegExp(name)}=`).test(attrs)) return attrs;
+  return `${attrs} ${name}="${value}"`;
+}
+
+function setAttribute(attrs: string, name: string, value: string) {
+  const pattern = new RegExp(`\\s${escapeRegExp(name)}="[^"]*"`);
+  if (pattern.test(attrs)) {
+    return attrs.replace(pattern, ` ${name}="${value}"`);
+  }
   return `${attrs} ${name}="${value}"`;
 }
 
