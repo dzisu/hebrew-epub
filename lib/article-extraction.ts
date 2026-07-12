@@ -30,7 +30,9 @@ export class ArticleExtractionError extends Error {
 
 const MAX_HTML_BYTES = 8 * 1024 * 1024;
 const MAX_TRANSLATION_CHARS = 4200;
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const IMAGE_MARKDOWN_RE = /^!\[[^\]]*]\([^)]+\)$/;
+const MARKDOWN_IMAGE_RE = /!\[([^\]]*)]\(([^)]+)\)/g;
 
 export async function extractUrlToHebrewMarkdown(
   rawUrl: string,
@@ -95,7 +97,10 @@ async function extractUrlDirect(url: URL): Promise<ArticleExtractionResult> {
   }
 
   const translatedHtml = await translateHtmlToHebrew(article.content);
-  const markdownBody = htmlToMarkdown(translatedHtml);
+  const markdownBody = await prepareMarkdownImages(
+    htmlToMarkdown(translatedHtml),
+    finalUrl.toString(),
+  );
   const imageCount = countMarkdownImages(markdownBody);
   const title = article.title?.trim() || finalUrl.hostname;
   const header = [
@@ -154,7 +159,11 @@ async function extractUrlViaJinaReader(
 
   const translatedMarkdown = await translateMarkdownToHebrew(markdownContent);
   const translatedTitle = await translatePlainTextToHebrew(title);
-  const imageCount = countMarkdownImages(translatedMarkdown);
+  const preparedMarkdown = await prepareMarkdownImages(
+    translatedMarkdown,
+    url.toString(),
+  );
+  const imageCount = countMarkdownImages(preparedMarkdown);
 
   return {
     markdown: [
@@ -162,7 +171,7 @@ async function extractUrlViaJinaReader(
       "",
       `> מקור: ${url.toString()}`,
       "",
-      translatedMarkdown,
+      preparedMarkdown,
     ].join("\n").trim(),
     source: {
       kind: "url",
@@ -449,6 +458,60 @@ function htmlToMarkdown(html: string) {
 
 function countMarkdownImages(markdown: string) {
   return (markdown.match(/!\[[^\]]*]\([^)]+\)/g) || []).length;
+}
+
+async function prepareMarkdownImages(markdown: string, referer: string) {
+  const matches = [...markdown.matchAll(MARKDOWN_IMAGE_RE)];
+  let prepared = markdown;
+
+  for (const match of matches) {
+    const [original, alt, src] = match;
+    const image = await tryInlineImage(src, referer);
+    const replacement = image
+      ? `![${alt}](${image})`
+      : `[תמונה${alt ? `: ${alt}` : ""}](${src})`;
+    prepared = prepared.replace(original, replacement);
+  }
+
+  return prepared;
+}
+
+async function tryInlineImage(src: string, referer: string) {
+  if (src.startsWith("data:")) return src;
+  let url: URL;
+  try {
+    url = new URL(src);
+  } catch {
+    return undefined;
+  }
+
+  if (!["http:", "https:"].includes(url.protocol)) return undefined;
+
+  try {
+    await assertPublicUrl(url);
+    const response = await fetch(url, {
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (compatible; HebrewEpubBot/0.1; +https://opencode.zisu.uk/hebrew-epub)",
+        referer,
+        accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+      },
+    });
+    const contentType = response.headers.get("content-type") || "";
+    const contentLength = Number(response.headers.get("content-length") || "0");
+    if (
+      !response.ok ||
+      !contentType.startsWith("image/") ||
+      contentLength > MAX_IMAGE_BYTES
+    ) {
+      return undefined;
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length > MAX_IMAGE_BYTES) return undefined;
+    return `data:${contentType.split(";")[0]};base64,${buffer.toString("base64")}`;
+  } catch {
+    return undefined;
+  }
 }
 
 function extractJinaTitle(markdown: string) {
