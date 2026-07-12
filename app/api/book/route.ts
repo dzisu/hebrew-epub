@@ -125,7 +125,9 @@ function normalizeEpubNavigation(epubFile: string, ts: string) {
 
   stripXhtmlFragments(path.join(workDir, "EPUB", "nav.xhtml"), "href");
   stripXhtmlFragments(path.join(workDir, "EPUB", "toc.ncx"), "src");
-  applyRtlAttributes(path.join(workDir, "EPUB"));
+  normalizePackageDocument(path.join(workDir, "EPUB"));
+  normalizeXhtmlFiles(path.join(workDir, "EPUB"));
+  sanitizeEpubCss(path.join(workDir, "EPUB"));
   embedLocalFonts(path.join(workDir, "EPUB"));
 
   fs.rmSync(outputEpub, { force: true });
@@ -150,13 +152,85 @@ function stripXhtmlFragments(filePath: string, attrName: "href" | "src") {
   fs.writeFileSync(filePath, xml.replace(pattern, `${attrName}="$1"`), "utf-8");
 }
 
-function applyRtlAttributes(epubDir: string) {
+function normalizePackageDocument(epubDir: string) {
+  const opfFile = findPackageDocument(epubDir);
+  let opf = fs.readFileSync(opfFile, "utf-8");
+
+  opf = opf
+    .replace(
+      /<spine\b(?![^>]*\spage-progression-direction=)([^>]*)>/,
+      '<spine page-progression-direction="rtl"$1>',
+    )
+    .replace(
+      /<spine\b([^>]*?)\spage-progression-direction="ltr"([^>]*)>/,
+      '<spine$1 page-progression-direction="rtl"$2>',
+    )
+    .replace(
+      /<itemref\s+idref="nav"\s*\/>/,
+      '<itemref idref="nav" linear="no" />',
+    )
+    .replace(
+      /<itemref\s+idref="nav"\s+linear="yes"\s*\/>/,
+      '<itemref idref="nav" linear="no" />',
+    )
+    .replace(
+      /\s*<meta\s+property="rendition:layout">pre-paginated<\/meta>/g,
+      "",
+    )
+    .replace(
+      /\s*<meta\s+property="rendition:[^"]+">[^<]*<\/meta>/g,
+      "",
+    );
+
+  fs.writeFileSync(opfFile, opf, "utf-8");
+}
+
+function normalizeXhtmlFiles(epubDir: string) {
   for (const filePath of listFiles(epubDir, ".xhtml")) {
-    const xhtml = fs
+    let xhtml = fs
       .readFileSync(filePath, "utf-8")
-      .replace(/<html(?![^>]*\sdir=)/, '<html dir="rtl"')
+      .replace(/<!DOCTYPE html>\s*/i, "")
+      .replace(
+        /<html\b[^>]*>/,
+        '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" dir="rtl" xml:lang="he" lang="he">',
+      )
       .replace(/<body(?![^>]*\sdir=)/, '<body dir="rtl"');
+
+    if (filePath.includes(`${path.sep}text${path.sep}`)) {
+      xhtml = xhtml.replace(/\s+id="[^"]*"/g, "");
+    }
+
+    assertNonEmptyXhtmlBody(filePath, xhtml);
     fs.writeFileSync(filePath, xhtml, "utf-8");
+  }
+}
+
+function sanitizeEpubCss(epubDir: string) {
+  for (const filePath of listFiles(epubDir, ".css")) {
+    const css = fs
+      .readFileSync(filePath, "utf-8")
+      .replace(/^\s*@import[^;]+;\s*/gm, "")
+      .replace(/^\s*direction\s*:[^;]+;\s*/gm, "")
+      .replace(/^\s*(height|min-height|max-height)\s*:\s*100(?:%|vh)\s*;\s*/gm, "")
+      .replace(/^\s*width\s*:\s*100vw\s*;\s*/gm, "")
+      .replace(/^\s*position\s*:\s*(?:absolute|fixed)\s*;\s*/gm, "")
+      .replace(/^\s*overflow\s*:\s*hidden\s*;\s*/gm, "")
+      .replace(/^\s*margin-[^:]+:\s*-[^;]+;\s*/gm, "");
+    fs.writeFileSync(filePath, css, "utf-8");
+  }
+}
+
+function assertNonEmptyXhtmlBody(filePath: string, xhtml: string) {
+  const body = xhtml.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)?.[1] || "";
+  const text = body
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+
+  if (!text) {
+    throw new Error(`EPUB content file has an empty body: ${filePath}`);
   }
 }
 
@@ -173,10 +247,7 @@ function embedLocalFonts(epubDir: string) {
     fs.copyFileSync(path.join(sourceDir, font), path.join(targetDir, font));
   }
 
-  const opfFile = listFiles(epubDir, ".opf")[0];
-  if (!opfFile) {
-    throw new Error("EPUB package document was not found");
-  }
+  const opfFile = findPackageDocument(epubDir);
   let opf = fs.readFileSync(opfFile, "utf-8");
   const manifestItems = fonts
     .filter((font) => !opf.includes(`href="fonts/${font}"`))
@@ -189,6 +260,14 @@ function embedLocalFonts(epubDir: string) {
     opf = opf.replace(/(\s*)<\/manifest>/, `\n${manifestItems}$1</manifest>`);
     fs.writeFileSync(opfFile, opf, "utf-8");
   }
+}
+
+function findPackageDocument(epubDir: string) {
+  const opfFile = listFiles(epubDir, ".opf")[0];
+  if (!opfFile) {
+    throw new Error("EPUB package document was not found");
+  }
+  return opfFile;
 }
 
 function listFiles(dir: string, extension: string): string[] {
