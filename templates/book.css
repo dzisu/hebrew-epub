@@ -1,9 +1,28 @@
-@import url("https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&display=swap");
+@font-face {
+	font-family: "Frank Ruhl Libre";
+	font-style: normal;
+	font-weight: 400;
+	src: url("../fonts/FrankRuhlLibre-Regular.ttf") format("truetype");
+}
+
+@font-face {
+	font-family: "Frank Ruhl Libre";
+	font-style: normal;
+	font-weight: 500;
+	src: url("../fonts/FrankRuhlLibre-Medium.ttf") format("truetype");
+}
+
+@font-face {
+	font-family: "Frank Ruhl Libre";
+	font-style: normal;
+	font-weight: 700;
+	src: url("../fonts/FrankRuhlLibre-Bold.ttf") format("truetype");
+}
 
 body, p {
-	direction: rtl;
 	font-family: "Frank Ruhl Libre", "Noto Serif Hebrew", David, serif;
 	line-height: 1.65;
+	text-align: right;
 }
 
 h1,
@@ -13,6 +32,5 @@ h4,
 h5,
 h6 {
 	text-align: center;
-	direction: rtl;
 	font-family: "Frank Ruhl Libre", "Noto Serif Hebrew", David, serif;
 }

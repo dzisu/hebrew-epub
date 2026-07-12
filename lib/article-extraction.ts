@@ -130,28 +130,40 @@ async function extractUrlViaJinaReader(
   const readerUrl = new URL(
     `https://r.jina.ai/http://${url.toString().replace(/^https?:\/\//, "http://")}`,
   );
-  const response = await fetch(readerUrl, {
-    headers: {
-      "user-agent":
-        "Mozilla/5.0 (compatible; HebrewEpubBot/0.1; +https://opencode.zisu.uk/hebrew-epub)",
-      accept: "text/plain,text/markdown",
-    },
-  });
+  let title = url.hostname;
+  let markdownContent = "";
+  let lastStatus = 0;
 
-  if (!response.ok) {
-    throw new ArticleExtractionError(
-      "READER_FALLBACK_FAILED",
-      `Could not import this URL through the article reader. HTTP ${response.status}.`,
-      422,
-    );
+  for (let attempt = 0; attempt < 12 && !markdownContent; attempt += 1) {
+    const response = await fetch(readerUrl, {
+      headers: {
+        "user-agent":
+          "Mozilla/5.0 (compatible; HebrewEpubBot/0.1; +https://opencode.zisu.uk/hebrew-epub)",
+        accept: "text/plain,text/markdown",
+        "x-no-cache": attempt === 0 ? "false" : "true",
+      },
+    });
+    lastStatus = response.status;
+
+    if (!response.ok) {
+      await waitBeforeRetry(attempt);
+      continue;
+    }
+
+    const readerMarkdown = await response.text();
+    title = extractJinaTitle(readerMarkdown) || title;
+    markdownContent = extractJinaMarkdownContent(readerMarkdown);
+    if (!markdownContent) {
+      await waitBeforeRetry(attempt);
+    }
   }
 
-  const readerMarkdown = await response.text();
-  const title = extractJinaTitle(readerMarkdown) || url.hostname;
-  const markdownContent = extractJinaMarkdownContent(readerMarkdown);
   if (!markdownContent) {
+    const code = lastStatus && lastStatus >= 400
+      ? "READER_FALLBACK_FAILED"
+      : "ARTICLE_EXTRACTION_FAILED";
     throw new ArticleExtractionError(
-      "ARTICLE_EXTRACTION_FAILED",
+      code,
       "Could not identify a readable article body on this page.",
       422,
     );
@@ -533,4 +545,9 @@ function extractJinaMarkdownContent(markdown: string) {
   }
 
   return cleaned;
+}
+
+function waitBeforeRetry(attempt: number) {
+  if (attempt >= 11) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, 250));
 }
