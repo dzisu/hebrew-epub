@@ -19,10 +19,54 @@
 	src: url("../fonts/FrankRuhlLibre-Bold.ttf") format("truetype");
 }
 
-body, p {
+body,
+p,
+li,
+blockquote,
+figcaption,
+td,
+th {
 	font-family: "Frank Ruhl Libre", "Noto Serif Hebrew", David, serif;
 	line-height: 1.65;
 	text-align: right;
+}
+
+body {
+	margin: 0;
+	padding: 0 1em;
+}
+
+p,
+blockquote,
+ul,
+ol,
+figure,
+table {
+	margin-top: 0.8em;
+	margin-bottom: 0.8em;
+}
+
+ul,
+ol {
+	padding-left: 0;
+	padding-right: 1.6em;
+	margin-left: 0;
+	margin-right: 0;
+	text-align: right;
+}
+
+li {
+	padding-left: 0;
+	padding-right: 0.2em;
+}
+
+li > p {
+	margin-top: 0;
+	margin-bottom: 0.35em;
+}
+
+.ltr {
+	font-family: "Frank Ruhl Libre", Georgia, serif;
 }
 
 h1,
@@ -31,6 +75,12 @@ h3,
 h4,
 h5,
 h6 {
-	text-align: center;
+	text-align: right;
 	font-family: "Frank Ruhl Libre", "Noto Serif Hebrew", David, serif;
+}
+
+body > h1:first-child,
+body > header h1,
+.title {
+	text-align: center;
 }

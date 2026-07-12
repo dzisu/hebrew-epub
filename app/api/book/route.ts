@@ -200,9 +200,74 @@ function normalizeXhtmlFiles(epubDir: string) {
       xhtml = xhtml.replace(/\s+id="[^"]*"/g, "");
     }
 
+    xhtml = normalizeReadingDirection(xhtml);
     assertNonEmptyXhtmlBody(filePath, xhtml);
     fs.writeFileSync(filePath, xhtml, "utf-8");
   }
+}
+
+function normalizeReadingDirection(xhtml: string) {
+  let normalized = xhtml
+    .replace(/<(p|li|blockquote|figcaption|td|th)(\s[^>]*)?>/g, (match, tag, attrs = "") => {
+      const blockAttrs = addAttributes(attrs, {
+        dir: "rtl",
+        "xml:lang": "he",
+        lang: "he",
+      });
+      return `<${tag}${blockAttrs}>`;
+    })
+    .replace(/<(ul|ol)(\s[^>]*)?>/g, (match, tag, attrs = "") =>
+      `<${tag}${ensureAttribute(attrs, "dir", "rtl")}>`,
+    );
+
+  normalized = normalized.replace(
+    /(<body\b[^>]*>)([\s\S]*?)(<\/body>)/i,
+    (_match, open, body, close) => `${open}${isolateLatinTextRuns(body)}${close}`,
+  );
+  return normalized;
+}
+
+function addAttributes(attrs: string, additions: Record<string, string>) {
+  return Object.entries(additions).reduce(
+    (current, [name, value]) => ensureAttribute(current, name, value),
+    attrs,
+  );
+}
+
+function ensureAttribute(attrs: string, name: string, value: string) {
+  if (new RegExp(`\\s${escapeRegExp(name)}=`).test(attrs)) return attrs;
+  return `${attrs} ${name}="${value}"`;
+}
+
+function isolateLatinTextRuns(xhtml: string) {
+  return xhtml
+    .split(/(<[^>]+>)/g)
+    .map((part) => {
+      if (!part || part.startsWith("<")) return part;
+      return part.replace(
+        /([A-Za-z][A-Za-z0-9.,:/+'’ -]*[A-Za-z0-9]|[0-9]+(?:[,.][0-9]+)+)/g,
+        (run) => {
+          const trimmed = run.trim();
+          if (!trimmed || trimmed.length < 2) return run;
+          const leading = run.match(/^\s*/)?.[0] || "";
+          const trailing = run.match(/\s*$/)?.[0] || "";
+          const body = escapeXmlText(trimmed);
+          return `${leading}<span dir="ltr" xml:lang="en" lang="en" class="ltr">${body}</span>${trailing}`;
+        },
+      );
+    })
+    .join("");
+}
+
+function escapeXmlText(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function sanitizeEpubCss(epubDir: string) {
