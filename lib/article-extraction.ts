@@ -31,8 +31,15 @@ export class ArticleExtractionError extends Error {
 const MAX_HTML_BYTES = 8 * 1024 * 1024;
 const MAX_TRANSLATION_CHARS = 4200;
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const HEBREW_RATIO_THRESHOLD = 0.35;
 const IMAGE_MARKDOWN_RE = /^!\[[^\]]*]\([^)]+\)$/;
 const MARKDOWN_IMAGE_RE = /!\[([^\]]*)]\(([^)]+)\)/g;
+const EPUB_SAFE_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/svg+xml",
+]);
 
 export async function extractUrlToHebrewMarkdown(
   rawUrl: string,
@@ -41,13 +48,34 @@ export async function extractUrlToHebrewMarkdown(
   await assertPublicUrl(url);
 
   try {
-    return await extractUrlDirect(url);
+    return finalizeArticleMarkdown(await extractUrlDirect(url), url.toString());
   } catch (error) {
     if (error instanceof ArticleExtractionError && canFallbackToReader(error)) {
-      return extractUrlViaJinaReader(url);
+      return finalizeArticleMarkdown(
+        await extractUrlViaJinaReader(url),
+        url.toString(),
+      );
     }
     throw error;
   }
+}
+
+async function finalizeArticleMarkdown(
+  result: ArticleExtractionResult,
+  referer: string,
+): Promise<ArticleExtractionResult> {
+  const markdown = await prepareMarkdownImages(
+    sanitizeMarkdownLinks(normalizeNestedImageLinks(result.markdown)),
+    referer,
+  );
+  return {
+    ...result,
+    markdown,
+    source: {
+      ...result.source,
+      imageCount: countMarkdownImages(markdown),
+    },
+  };
 }
 
 async function extractUrlDirect(url: URL): Promise<ArticleExtractionResult> {
@@ -96,7 +124,10 @@ async function extractUrlDirect(url: URL): Promise<ArticleExtractionResult> {
     );
   }
 
-  const translatedHtml = await translateHtmlToHebrew(article.content);
+  const shouldTranslate = !isProbablyHebrewText(article.textContent);
+  const translatedHtml = shouldTranslate
+    ? await translateHtmlToHebrew(article.content)
+    : article.content;
   const markdownBody = await prepareMarkdownImages(
     htmlToMarkdown(translatedHtml),
     finalUrl.toString(),
@@ -104,7 +135,7 @@ async function extractUrlDirect(url: URL): Promise<ArticleExtractionResult> {
   const imageCount = countMarkdownImages(markdownBody);
   const title = article.title?.trim() || finalUrl.hostname;
   const header = [
-    `# ${await translatePlainTextToHebrew(title)}`,
+    `# ${await maybeTranslatePlainTextToHebrew(title)}`,
     "",
     article.byline ? `> מקור/מחבר: ${article.byline}` : "",
     `> מקור: ${finalUrl.toString()}`,
@@ -112,7 +143,7 @@ async function extractUrlDirect(url: URL): Promise<ArticleExtractionResult> {
   ].filter(Boolean);
 
   return {
-    markdown: `${header.join("\n")}${markdownBody}`.trim(),
+    markdown: `${header.join("\n")}\n${markdownBody}`.trim(),
     source: {
       kind: "url",
       originalName: finalUrl.toString(),
@@ -170,7 +201,7 @@ async function extractUrlViaJinaReader(
   }
 
   const translatedMarkdown = await translateMarkdownToHebrew(markdownContent);
-  const translatedTitle = await translatePlainTextToHebrew(title);
+  const translatedTitle = await maybeTranslatePlainTextToHebrew(title);
   const preparedMarkdown = await prepareMarkdownImages(
     translatedMarkdown,
     url.toString(),
@@ -307,8 +338,14 @@ function prepareImages(document: Document, baseUrl: URL) {
       img.getAttribute("src") ||
       img.getAttribute("data-src") ||
       img.getAttribute("data-original") ||
-      img.getAttribute("data-lazy-src");
+      img.getAttribute("data-lazy-src") ||
+      imageFromSrcset(img.getAttribute("srcset")) ||
+      imageFromSrcset(img.getAttribute("data-srcset"));
     if (!src) return;
+    if (isLikelyTrackingImage(img)) {
+      img.remove();
+      return;
+    }
     try {
       img.setAttribute("src", new URL(src, baseUrl).toString());
     } catch {
@@ -317,18 +354,36 @@ function prepareImages(document: Document, baseUrl: URL) {
   });
 }
 
+function imageFromSrcset(srcset: string | null) {
+  if (!srcset) return undefined;
+  const candidates = srcset
+    .split(",")
+    .map((candidate) => candidate.trim().split(/\s+/)[0])
+    .filter(Boolean);
+  return candidates.at(-1);
+}
+
+function isLikelyTrackingImage(img: HTMLImageElement) {
+  const width = Number(img.getAttribute("width") || img.width || "0");
+  const height = Number(img.getAttribute("height") || img.height || "0");
+  return width > 0 && height > 0 && width <= 2 && height <= 2;
+}
+
 async function translateHtmlToHebrew(html: string) {
   const chunks = splitHtmlForTranslation(html);
   const translated = await translateTextChunks(chunks, "html");
   return translated.join("\n");
 }
 
-async function translatePlainTextToHebrew(text: string) {
+async function maybeTranslatePlainTextToHebrew(text: string) {
+  if (isProbablyHebrewText(text)) return text;
   const translated = await translateTextChunks([text], "plain");
   return translated[0] || text;
 }
 
 export async function translateMarkdownToHebrew(markdown: string) {
+  if (isProbablyHebrewText(markdown)) return markdown;
+
   const blocks = markdown.split(/\n{2,}/);
   const output: string[] = [];
   let translatable: string[] = [];
@@ -360,6 +415,14 @@ export async function translateMarkdownToHebrew(markdown: string) {
   });
 
   return output.join("\n\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+export function isProbablyHebrewText(text: string) {
+  const letters = text.match(/[\p{L}]/gu) || [];
+  if (letters.length < 12) return /[\u0590-\u05FF]/.test(text);
+
+  const hebrewLetters = text.match(/[\u0590-\u05FF]/g) || [];
+  return hebrewLetters.length / letters.length >= HEBREW_RATIO_THRESHOLD;
 }
 
 async function translateTextChunks(
@@ -465,7 +528,70 @@ function htmlToMarkdown(html: string) {
     codeBlockStyle: "fenced",
     bulletListMarker: "-",
   });
-  return turndown.turndown(html).replace(/\n{3,}/g, "\n\n").trim();
+  return sanitizeMarkdownLinks(normalizeNestedImageLinks(turndown.turndown(html)))
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export function sanitizeMarkdownLinks(markdown: string) {
+  return markdown.replace(
+    /(^|[^!])\[([^\]\n]*(?:\\.[^\]\n]*)*)]\(([^)\n]+)\)/g,
+    (match, prefix: string, label: string, destination: string) => {
+      const trimmedDestination = destination.trim();
+      if (trimmedDestination.startsWith("#")) {
+        return `${prefix}${label.replace(/\\([[\]])/g, "$1")}`;
+      }
+
+      const [href, ...rest] = trimmedDestination.split(/\s+/);
+      if (!/^https?:\/\//i.test(href) || !href.includes("#")) {
+        return match;
+      }
+
+      try {
+        const url = new URL(href.replace(/\\([()])/g, "$1"));
+        url.hash = "";
+        return `${prefix}[${label}](${url.toString()}${rest.length ? ` ${rest.join(" ")}` : ""})`;
+      } catch {
+        return match;
+      }
+    },
+  );
+}
+
+function normalizeNestedImageLinks(markdown: string) {
+  let normalized = "";
+  let offset = 0;
+
+  while (offset < markdown.length) {
+    const start = markdown.indexOf("[[", offset);
+    if (start < 0) {
+      normalized += markdown.slice(offset);
+      break;
+    }
+
+    const innerDivider = markdown.indexOf("](", start + 2);
+    const outerDivider = markdown.indexOf(")](", innerDivider + 2);
+    const outerEnd = markdown.indexOf(")", outerDivider + 3);
+
+    if (innerDivider < 0 || outerDivider < 0 || outerEnd < 0) {
+      normalized += markdown.slice(offset);
+      break;
+    }
+
+    const alt = markdown.slice(start + 2, innerDivider);
+    const imageUrl = markdown.slice(innerDivider + 2, outerDivider);
+    if (!/^https?:\/\//.test(imageUrl)) {
+      normalized += markdown.slice(offset, start + 2);
+      offset = start + 2;
+      continue;
+    }
+
+    normalized += markdown.slice(offset, start);
+    normalized += `![${alt}](${imageUrl})`;
+    offset = outerEnd + 1;
+  }
+
+  return normalized;
 }
 
 function countMarkdownImages(markdown: string) {
@@ -473,19 +599,29 @@ function countMarkdownImages(markdown: string) {
 }
 
 async function prepareMarkdownImages(markdown: string, referer: string) {
-  const matches = [...markdown.matchAll(MARKDOWN_IMAGE_RE)];
-  let prepared = markdown;
+  let prepared = normalizeNestedImageLinks(markdown);
+  const matches = [...prepared.matchAll(MARKDOWN_IMAGE_RE)];
 
   for (const match of matches) {
     const [original, alt, src] = match;
+    const safeAlt = sanitizeImageAlt(alt);
     const image = await tryInlineImage(src, referer);
     const replacement = image
-      ? `![${alt}](${image})`
-      : `[תמונה${alt ? `: ${alt}` : ""}](${src})`;
+      ? `![${safeAlt}](${image})`
+      : `[תמונה${safeAlt ? `: ${safeAlt}` : ""}](${src})`;
     prepared = prepared.replace(original, replacement);
   }
 
   return prepared;
+}
+
+function sanitizeImageAlt(alt: string) {
+  return alt
+    .replace(/!?\[([^\]]*)]\([^)]+\)/g, "$1")
+    .replace(/[[\]()]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
 }
 
 async function tryInlineImage(src: string, referer: string) {
@@ -510,17 +646,19 @@ async function tryInlineImage(src: string, referer: string) {
       },
     });
     const contentType = response.headers.get("content-type") || "";
+    const mediaType = contentType.split(";")[0].toLowerCase();
     const contentLength = Number(response.headers.get("content-length") || "0");
     if (
       !response.ok ||
       !contentType.startsWith("image/") ||
+      !EPUB_SAFE_IMAGE_TYPES.has(mediaType) ||
       contentLength > MAX_IMAGE_BYTES
     ) {
       return undefined;
     }
     const buffer = Buffer.from(await response.arrayBuffer());
     if (buffer.length > MAX_IMAGE_BYTES) return undefined;
-    return `data:${contentType.split(";")[0]};base64,${buffer.toString("base64")}`;
+    return `data:${mediaType};base64,${buffer.toString("base64")}`;
   } catch {
     return undefined;
   }

@@ -22,18 +22,19 @@ Implemented so far:
 - Forked from `lingdocs/rtl-epub-maker`.
 - Renamed package to `hebrew-epub`.
 - Hebrew is now the default language metadata.
-- Basic Hebrew RTL page direction is enabled.
-- Frank Ruhl Libre is set as the baseline UI and EPUB CSS font target.
+- Reader-safe Hebrew RTL output is enforced through OPF spine metadata and XHTML `html`/`body` direction attributes.
+- Frank Ruhl Libre is embedded inside generated EPUB packages.
 - Hebrew RTL conversion workspace with upload, metadata, status, and download flow.
 - Backend document normalization for Markdown, TXT, DOC/DOCX, text-based PDF, and EPUB.
+- URL article import with readable-content extraction, image preparation, and automatic Hebrew translation.
+- Automatic Hebrew detection skips translation when the source content is already Hebrew.
+- EPUB validation script for EpubCheck plus Yomu-oriented RTL structure checks.
 - Clear scanned-PDF error path when a PDF has no extractable text layer.
 
 Not implemented yet:
 
-- Translation workflow.
-- EpubCheck integration.
 - Production authentication.
-- Font embedding inside the EPUB package.
+- Full messy-book restructuring with chapter detection and structural cleanup.
 - OCR for scanned PDFs.
 
 ## Running Locally
@@ -70,7 +71,19 @@ docker run -p 127.0.0.1:3001:3001 hebrew-epub
 
 The project target is to release only EPUB files that pass W3C EpubCheck with zero errors.
 
-EpubCheck integration is planned but not yet implemented in this bootstrap commit.
+Validate a generated EPUB file:
+
+```sh
+npm run check:epub -- path/to/book.epub
+```
+
+The validation script runs EpubCheck when `EPUBCHECK_JAR` is set or when `/tmp/epubcheck-5.3.0/epubcheck.jar` exists. It always checks the EPUB container for Hebrew reader requirements:
+
+- `dc:language` is `he`.
+- `<spine page-progression-direction="rtl">` is present.
+- Every XHTML file has `html` and `body` RTL direction metadata.
+- Text XHTML bodies are not empty.
+- EPUB CSS does not include forbidden `direction`, remote `@import`, or reader-hostile fixed layout rules.
 
 ## Privacy
 

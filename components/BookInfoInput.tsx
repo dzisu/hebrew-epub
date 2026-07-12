@@ -2,7 +2,6 @@
 
 import { ChangeEvent, useEffect, useState, useRef } from "react";
 import Select from "react-select";
-import LanguageSelect from "./LanguageSelect";
 import { Frontmatter } from "@/app/page";
 
 const requiredFields = [
@@ -42,6 +41,8 @@ type Option = {
 
 const baseSettings = {
   dir: "rtl",
+  lang: "he",
+  language: "he",
   "page-progression-direction": "rtl",
 };
 
@@ -56,7 +57,7 @@ function BookInfoInput({
 }) {
   const coverRef = useRef<any>(null);
   const [fieldsChosen, setFieldsChosen] = useState<string[]>(suggestedFields);
-  const [state, setState] = useState<Frontmatter>({ lang: "he", language: "he" });
+  const [state, setState] = useState<Frontmatter>({});
   const fields = [...requiredFields, ...fieldsChosen];
   const availableFields = possibleFields.filter(f => !fieldsChosen.includes(f));
   const availableFieldsOptions = availableFields.map((f): Option => ({
@@ -81,20 +82,6 @@ function BookInfoInput({
       ...s,
       [name]: value,
     }));
-  }
-  function handleLanguageChange(lang: string | null) {
-    setState(s => {
-      if (!lang) {
-        const { lang, language, ...rest } = s;
-        return rest;
-      }
-      return {
-        ...s,
-        // TODO: using both, but which is proper/necessary?
-        lang,
-        language: lang,
-      };
-    });
   }
   useEffect(() => {
     if (!suggestedTitle) return;
@@ -144,7 +131,6 @@ function BookInfoInput({
       // @ts-ignore
       options={availableFieldsOptions}
     />
-    <LanguageSelect value={state.lang} onChange={handleLanguageChange} />
     <button disabled={isBusy} onClick={submit} type="button" className="primary-action">
       {isBusy ? "יוצר EPUB..." : "צור EPUB"}
     </button>
