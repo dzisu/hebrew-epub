@@ -35,7 +35,7 @@ function DocReceiver({ handleReceiveText }: {
   return <div {...getRootProps()} className="clickable d-flex flex-row align-items-center justify-content-center" style={{ padding: "2rem 1rem", border: "2px dashed grey", textAlign: "center", backgroundColor: isDragActive ? "#34a8eb" : "inherit" }}>
     <input {...getInputProps()} />
     <div className="text-muted">
-      {state ? state : "Drag file or click to add text file/document"}
+      {state ? state : "גרור קובץ או לחץ להוספת מסמך"}
     </div>
   </div>;
 }

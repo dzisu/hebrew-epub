@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-const title = "RTL EPUB Maker";
-const description = "Easily create EPUB e-book files with proper RTL support"
+const title = "Hebrew EPUB";
+const description = "Create Hebrew-friendly EPUB books with RTL support";
 export const metadata: Metadata = {
   title,
   description,
@@ -36,8 +36,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="he" dir="rtl">
+      <body dir="rtl">
         {children}
       </body>
     </html>

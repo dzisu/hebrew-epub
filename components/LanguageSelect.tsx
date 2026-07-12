@@ -4,6 +4,7 @@ import Select from "react-select";
 import { useState } from "react";
 
 const languageOptions = [
+  { value: "he", label: "Hebrew" },
   { value: "ar", label: "Arabic" },
   { value: "fa", label: "Farsi" },
   { value: "prs", label: "Dari" },
@@ -32,7 +33,7 @@ function LanguageSelect({ value, onChange }: {
     }
   }
   return <div>
-    <div className="mt-4 mb-2">language:</div>
+    <div className="mt-4 mb-2">שפה:</div>
     <Select
       className="basic-single"
       classNamePrefix="select"
@@ -46,7 +47,7 @@ function LanguageSelect({ value, onChange }: {
     />
     {showingOther && <div className="my-2">
       <label htmlFor="otherLang" className="form-label d-flex flex-row align-items-center">
-        <span>Custom <a href="https://www.w3.org/International/articles/language-tags/" target="_blank" rel="noreferrer">IETF BCP 47</a> Language Code</span>
+        <span>קוד שפה מותאם לפי <a href="https://www.w3.org/International/articles/language-tags/" target="_blank" rel="noreferrer">IETF BCP 47</a></span>
       </label>
       <input onChange={(e) => onChange(e.target.value)} type="text" className="form-control" id="otherLang" />
     </div>}

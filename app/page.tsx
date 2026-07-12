@@ -38,22 +38,22 @@ export default function Home() {
       error: () => setSubmissionStatus("Error"),
     });
   }
-  return <div className="container" style={{ marginBottom: "50px", maxWidth: "950px" }}>
-    <h1 className="mt-3">RTL EPUB Maker 📚</h1>
-    <p className="lead mb-4">Easily create EPUB e-book files with proper RTL support</p>
-    <h4 className="mb-3">Book Content</h4>
+  return <div className="container" dir="rtl" style={{ marginBottom: "50px", maxWidth: "950px" }}>
+    <h1 className="mt-3">Hebrew EPUB</h1>
+    <p className="lead mb-4">יצירת ספרי EPUB ידידותיים לעברית עם תמיכת RTL</p>
+    <h4 className="mb-3">תוכן הספר</h4>
     <DocReceiver handleReceiveText={handleReceiveText} />
     <div className="mt-3">
       <label htmlFor="mdTextarea" className="form-label d-flex flex-row justify-content-between align-items-center">
-        <div>Text in Markdown</div>
+        <div>טקסט ב-Markdown</div>
         <div>
           <button type="button" className="btn btn-sm btn-light" onClick={() => setShowFormatGuide(true)}>
-            📖 Formatting Guide
+            מדריך עיצוב
           </button>
         </div>
       </label>
       <textarea
-        placeholder="or paste book content here..."
+        placeholder="או הדבק כאן את תוכן הספר..."
         spellCheck="false"
         dir="rtl"
         ref={mdRef}
@@ -63,16 +63,16 @@ export default function Home() {
       />
     </div>
     <div style={{ textAlign: "right" }}>
-      <button type="button" className="btn btn-sm btn-light mt-2" onClick={clearText}>Clear</button>
+      <button type="button" className="btn btn-sm btn-light mt-2" onClick={clearText}>ניקוי</button>
     </div>
-    <h4>Book Metadata</h4>
+    <h4>פרטי הספר</h4>
     <BookInfoInput handleSubmit={handleSubmit} />
     <div>
       <samp>{submissionStatus}</samp>
     </div>
     <div className="text-center mt-4 text-muted">
-      <p className="lead">Made by <a className="em-link" href="https://lingdocs.com">LingDocs</a></p>
-      <p>Submissions are private. Nothing is kept on the server. See the <a className="em-link" href="https://github.com/lingdocs/rtl-epub-maker">source code here</a>.</p>
+      <p className="lead">מבוסס על <a className="em-link" href="https://github.com/lingdocs/rtl-epub-maker">RTL EPUB Maker</a></p>
+      <p>הקבצים מעובדים זמנית בצד השרת. אין להעלות מסמכים רגישים לפני הפעלה מאובטחת.</p>
     </div>
     <FormatGuideModal show={showFormatGuide} onHide={() => setShowFormatGuide(false)} />
   </div>

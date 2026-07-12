@@ -1,55 +1,79 @@
-# RTL EPUB Maker
+# Hebrew EPUB
 
-Easily create EPUB e-book files with proper RTL support.
+Hebrew EPUB is a web application for converting documents into Hebrew-friendly EPUB books with RTL reading behavior.
 
-This is a web app that uses [pandoc](https://pandoc.org) to create .epub files for e-books in RTL languages. Making e-books for right-to-left languages can be tricky. This tries app tries to simplify the process as much as possible, so that anyone can make them.
+This project is a fork of [`lingdocs/rtl-epub-maker`](https://github.com/lingdocs/rtl-epub-maker). The fork starts from the original Pandoc-based RTL EPUB workflow and will evolve toward a Hebrew-first document-to-EPUB tool.
 
-### [Try it live - RTL EPUB Maker 📚](https://rtl-epub-maker.lingdocs.com)
+## Goals
 
-## Running
+- Generate EPUB files that are comfortable to read in Hebrew ebook reader apps.
+- Use RTL metadata and page progression.
+- Use Frank Ruhl Libre as the target Hebrew reading typeface.
+- Follow EPUB 3.3 requirements.
+- Validate final EPUB output with EpubCheck.
+- Support more source formats over time, including Markdown, PDF, existing EPUB, Hebrew documents, and other-language documents translated to Hebrew.
 
-You can run this app on your own machine or host it on a server.
+## Current Status
 
-### With Node
+Bootstrap fork.
 
-requires:
+Implemented so far:
 
-- Node >= 18
-- [pandoc](https://pandoc.org/installing.html)
+- Forked from `lingdocs/rtl-epub-maker`.
+- Renamed package to `hebrew-epub`.
+- Hebrew is now the default language metadata.
+- Basic Hebrew RTL page direction is enabled.
+- Frank Ruhl Libre is set as the baseline UI and EPUB CSS font target.
 
-To run in dev mode:
+Not implemented yet:
+
+- PDF import.
+- Existing EPUB import.
+- Translation workflow.
+- EpubCheck integration.
+- Production authentication.
+- Font embedding inside the EPUB package.
+
+## Running Locally
+
+Requirements:
+
+- Node.js
+- Pandoc
+
+Install and run:
 
 ```sh
 npm install
 npm run dev
 ```
 
-To host in production:
+Production build:
 
 ```sh
 npm run build
 npm run start
 ```
 
-### With Docker
+## Docker
 
-If you are using `linux/amd64` architecture you can just run the [the docker image](https://hub.docker.com/r/lingdocs/rtl-epub-maker).
-
-```sh
-docker compose up
-```
-
-If you are using an architecture other than `linux/amd64` you will need to build your own docker image.
+The inherited Docker setup builds a Next.js app with Pandoc available in the runtime image.
 
 ```sh
-docker build . -t rtl-epub-maker
-docker run -p 127.0.0.1:3001:3001 rtl-epub-maker
+docker build . -t hebrew-epub
+docker run -p 127.0.0.1:3001:3001 hebrew-epub
 ```
 
-## Serving
+## EPUB 3.3 Quality Gate
 
-The app will be served on `http://localhost:3001`. Add a reverse proxy with SSL if you want to serve it to the world.
+The project target is to release only EPUB files that pass W3C EpubCheck with zero errors.
 
----
+EpubCheck integration is planned but not yet implemented in this bootstrap commit.
 
-Code is licensed under an [MIT License](https://github.com/lingdocs/rtl-epub-maker/blob/master/LICENSE). Contributions are welcome.
+## Privacy
+
+Uploaded documents are processed server-side and should be treated as sensitive runtime data. Do not deploy this app publicly without access control.
+
+## License
+
+The upstream project is licensed under the MIT License.

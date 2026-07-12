@@ -37,7 +37,7 @@ const baseSettings = {
 function BookInfoInput({ handleSubmit }: { handleSubmit: (info: { frontmatter: Frontmatter, cover: File | undefined }) => void }) {
   const coverRef = useRef<any>(null);
   const [fieldsChosen, setFieldsChosen] = useState<string[]>(suggestedFields);
-  const [state, setState] = useState<Frontmatter>({});
+  const [state, setState] = useState<Frontmatter>({ lang: "he", language: "he" });
   const fields = [...requiredFields, ...fieldsChosen];
   const availableFields = possibleFields.filter(f => !fieldsChosen.includes(f));
   const availableFieldsOptions = availableFields.map((f): Option => ({
@@ -90,7 +90,7 @@ function BookInfoInput({ handleSubmit }: { handleSubmit: (info: { frontmatter: F
   }
   return <div style={{ maxWidth: "600px" }}>
     <div className="my-3">
-      <label htmlFor="cover-file" className="form-label">cover image <span className="text-muted">(.jpg or .png less than 5mb)</span></label>
+      <label htmlFor="cover-file" className="form-label">תמונת כריכה <span className="text-muted">(.jpg או .png עד 5MB)</span></label>
       <input multiple={false} ref={coverRef} className="form-control" type="file" id="cover-file" accept="image/jpeg,image/png" />
     </div>
     {fields.map((field) => (
@@ -106,7 +106,7 @@ function BookInfoInput({ handleSubmit }: { handleSubmit: (info: { frontmatter: F
         <input onChange={handleFieldChange} type="text" className="form-control" id={field} name={field} value={state[field] || ""} />
       </div>
     ))}
-    <div className="mt-4 mb-2">add fields:</div>
+    <div className="mt-4 mb-2">הוספת שדות:</div>
     <Select
       className="basic-single"
       classNamePrefix="select"
@@ -119,7 +119,7 @@ function BookInfoInput({ handleSubmit }: { handleSubmit: (info: { frontmatter: F
       options={availableFieldsOptions}
     />
     <LanguageSelect value={state.lang} onChange={handleLanguageChange} />
-    <button onClick={submit} type="button" className="btn btn-lg btn-primary my-4">Download .epub</button>
+    <button onClick={submit} type="button" className="btn btn-lg btn-primary my-4">הורדת EPUB</button>
   </div>
 }
 
