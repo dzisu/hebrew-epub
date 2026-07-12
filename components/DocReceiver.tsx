@@ -5,6 +5,8 @@ import { useDropzone } from "react-dropzone";
 import { uploadDoc } from "../lib/fetchers";
 
 const textFormats = {
+  "application/epub+zip": [".epub"],
+  "application/pdf": [".pdf"],
   "application/vnd.oasis.opendocument.text": [".odt"],
   "application/rtf": [".rtf"],
   "text/plain": [".txt", ".md"],
@@ -19,8 +21,8 @@ function DocReceiver({ handleReceiveText }: {
   const [state, setState] = useState<string>("");
   function onDrop(files: File[]) {
     uploadDoc(files[0], {
-      error: () => setState("Error"),
-      progress: (p) => setState(p < 100 ? `Uploading ${p}%...` : "Processing..."),
+      error: (problem) => setState(problem || "לא הצלחנו לקרוא את הקובץ"),
+      progress: (p) => setState(p < 100 ? `מעלה את הקובץ... ${p}%` : "מעבד את הקובץ..."),
       complete: (m: string) => {
         setState("");
         handleReceiveText(m);
@@ -32,10 +34,11 @@ function DocReceiver({ handleReceiveText }: {
     multiple: false,
     accept: textFormats,
   });
-  return <div {...getRootProps()} className="clickable d-flex flex-row align-items-center justify-content-center" style={{ padding: "2rem 1rem", border: "2px dashed grey", textAlign: "center", backgroundColor: isDragActive ? "#34a8eb" : "inherit" }}>
+  return <div {...getRootProps()} className={`dropzone ${isDragActive ? "active" : ""}`}>
     <input {...getInputProps()} />
-    <div className="text-muted">
-      {state ? state : "גרור קובץ או לחץ להוספת מסמך"}
+    <div>
+      <strong>{state ? state : "גרור קובץ לכאן או בחר קובץ"}</strong>
+      <div className="text-muted">Markdown, TXT, DOCX, PDF טקסטואלי או EPUB</div>
     </div>
   </div>;
 }

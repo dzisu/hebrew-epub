@@ -21,8 +21,6 @@ export function bookRequest(
     complete: () => void;
   },
 ): { cancel: () => void } {
-  console.log("IN BOOK REQUEST");
-  console.log({ req });
   const formData = new FormData();
   const xhr = new XMLHttpRequest();
   xhr.responseType = "blob";
@@ -69,7 +67,7 @@ export function uploadDoc(
   file: File,
   callback: {
     progress: (percentage: number) => void;
-    error: () => void;
+    error: (problem?: string) => void;
     complete: (markdown: string) => void;
   },
 ): { cancel: () => void } {
@@ -78,7 +76,12 @@ export function uploadDoc(
   formData.append("file", file);
   xhr.onload = () => {
     try {
-      const { markdown } = JSON.parse(xhr.responseText);
+      const response = JSON.parse(xhr.responseText);
+      if (!xhr.status.toString().startsWith("2") || response.ok === false) {
+        callback.error(response.problem);
+        return;
+      }
+      const { markdown } = response;
       callback.complete(markdown);
     } catch (e) {
       console.error(e);
@@ -97,7 +100,7 @@ export function uploadDoc(
     "error",
     (e) => {
       console.error(e);
-      callback.error();
+      callback.error("העלאת הקובץ נכשלה.");
     },
     false,
   );

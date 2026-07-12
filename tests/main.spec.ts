@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 import path from "path";
 import fs from "fs";
 
+const baseUrl = process.env.BASE_URL || "http://localhost:3000";
+
 // TODO: not working with test consistently
 // test("test with plain word file", async ({ page }) => {
 //   await page.goto("http://localhost:3000/");
@@ -32,27 +34,23 @@ import fs from "fs";
 // for some reason the testing of the text area gets confused when we update it
 // multiple times so I will split these into seperate tests
 test("test with plain text file", async ({ page }) => {
-  await page.goto("http://localhost:3000/");
+  await page.goto(baseUrl);
   await expect(page).toHaveTitle(/Hebrew EPUB/);
-  await expect(page.getByText("יצירת ספרי EPUB")).toBeVisible();
+  await expect(page.getByText("המרת מסמכים לספר EPUB")).toBeVisible();
   const fileChooserPromise = page.waitForEvent("filechooser");
   // inserts the text from a plain text file
-  await page.getByText("גרור קובץ או לחץ").click();
+  await page.getByText("גרור קובץ לכאן").click();
   const fileChooser = await fileChooserPromise;
   const mdFile = path.join("tests", "test-content", "test.md");
   await fileChooser.setFiles(mdFile);
-  const textbox = page.getByLabel("Text in Markdown");
+  const textbox = page.getByLabel("או הדבק טקסט להמרה");
   expect(textbox).toHaveValue(fs.readFileSync(mdFile, "utf8"));
   // add title - author etc
-  await page.getByRole("textbox", { name: "title" }).click();
-  await page.getByRole("textbox", { name: "title" }).fill("My Title");
-  await page.getByRole("textbox", { name: "X author" }).click();
-  await page.getByRole("textbox", { name: "X author" }).fill("My Author");
-  await page.getByRole("button", { name: "תמונת כריכה" }).click();
-  // add cover image
-  const f2 = await fileChooserPromise;
-  f2.setFiles(path.join("tests", "test-content", "vancouver.jpg"));
+  await page.getByRole("textbox", { name: "כותרת הספר" }).click();
+  await page.getByRole("textbox", { name: "כותרת הספר" }).fill("My Title");
+  await page.getByRole("textbox", { name: "X מחבר" }).click();
+  await page.getByRole("textbox", { name: "X מחבר" }).fill("My Author");
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "הורדת EPUB" }).click();
+  await page.getByRole("button", { name: "צור EPUB" }).click();
   await downloadPromise;
 });

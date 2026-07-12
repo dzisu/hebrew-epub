@@ -24,15 +24,17 @@ Implemented so far:
 - Hebrew is now the default language metadata.
 - Basic Hebrew RTL page direction is enabled.
 - Frank Ruhl Libre is set as the baseline UI and EPUB CSS font target.
+- Hebrew RTL conversion workspace with upload, metadata, status, and download flow.
+- Backend document normalization for Markdown, TXT, DOC/DOCX, text-based PDF, and EPUB.
+- Clear scanned-PDF error path when a PDF has no extractable text layer.
 
 Not implemented yet:
 
-- PDF import.
-- Existing EPUB import.
 - Translation workflow.
 - EpubCheck integration.
 - Production authentication.
 - Font embedding inside the EPUB package.
+- OCR for scanned PDFs.
 
 ## Running Locally
 

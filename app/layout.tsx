@@ -5,6 +5,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 const title = "Hebrew EPUB";
 const description = "Create Hebrew-friendly EPUB books with RTL support";
 export const metadata: Metadata = {
+  metadataBase: new URL("https://opencode.zisu.uk/hebrew-epub/"),
   title,
   description,
   icons: {

@@ -8,72 +8,120 @@ import FormatGuideModal from "@/components/FormatGuideModal";
 
 export type Frontmatter = Record<string, string>;
 
+type ConversionStatus = "idle" | "uploading" | "processing" | "ready" | "error";
+
+const statusSteps = [
+  { key: "uploading", label: "העלאה" },
+  { key: "processing", label: "המרה" },
+  { key: "ready", label: "מוכן" },
+];
+
 export default function Home() {
   const mdRef = useRef<any>(null);
   const [showFormatGuide, setShowFormatGuide] = useState<boolean>(false);
-  const [submissionStatus, setSubmissionStatus] = useState<string>("");
+  const [submissionStatus, setSubmissionStatus] = useState<ConversionStatus>("idle");
+  const [statusMessage, setStatusMessage] = useState<string>("בחר קובץ או הדבק טקסט כדי להתחיל.");
   function handleReceiveText(m: string) {
     mdRef.current.value = m;
+    setSubmissionStatus("idle");
+    setStatusMessage("התוכן נטען. אפשר להשלים פרטי ספר וליצור EPUB.");
   }
   function clearText() {
     mdRef.current.value = "";
+    setSubmissionStatus("idle");
+    setStatusMessage("בחר קובץ או הדבק טקסט כדי להתחיל.");
   }
   function handleSubmit(info: { frontmatter: Frontmatter, cover: File | undefined }) {
     const content = mdRef.current.value as string;
     if (!content) {
-      alert("Please enter some content for the book");
+      setSubmissionStatus("error");
+      setStatusMessage("יש לבחור קובץ או להזין טקסט.");
       return;
     }
     if (!info.frontmatter.title) {
-      alert("Please enter a title for the book");
+      setSubmissionStatus("error");
+      setStatusMessage("יש להזין כותרת לספר.");
       return;
     }
-    setSubmissionStatus("");
+    setSubmissionStatus("uploading");
+    setStatusMessage("מעלה את התוכן...");
     bookRequest({
       ...info,
       content,
     }, {
-      complete: () => setSubmissionStatus("Done"),
-      progress: (p) => setSubmissionStatus(p < 100 ? `Uploading ${p}%...` : "Processing..."),
-      error: () => setSubmissionStatus("Error"),
+      complete: () => {
+        setSubmissionStatus("ready");
+        setStatusMessage("הקובץ מוכן וההורדה החלה.");
+      },
+      progress: (p) => {
+        setSubmissionStatus(p < 100 ? "uploading" : "processing");
+        setStatusMessage(p < 100 ? `מעלה את התוכן... ${p}%` : "ממיר ל-EPUB עברי...");
+      },
+      error: () => {
+        setSubmissionStatus("error");
+        setStatusMessage("ההמרה נכשלה. נסה שוב או החלף קובץ מקור.");
+      },
     });
   }
-  return <div className="container" dir="rtl" style={{ marginBottom: "50px", maxWidth: "950px" }}>
-    <h1 className="mt-3">Hebrew EPUB</h1>
-    <p className="lead mb-4">יצירת ספרי EPUB ידידותיים לעברית עם תמיכת RTL</p>
-    <h4 className="mb-3">תוכן הספר</h4>
-    <DocReceiver handleReceiveText={handleReceiveText} />
-    <div className="mt-3">
-      <label htmlFor="mdTextarea" className="form-label d-flex flex-row justify-content-between align-items-center">
-        <div>טקסט ב-Markdown</div>
-        <div>
-          <button type="button" className="btn btn-sm btn-light" onClick={() => setShowFormatGuide(true)}>
-            מדריך עיצוב
-          </button>
+  return <main className="app-shell" dir="rtl">
+    <div className="app-header">
+      <div>
+        <h1>יצירת EPUB עברי</h1>
+        <p>המרת מסמכים לספר EPUB תקין וידידותי לעברית.</p>
+      </div>
+      <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setShowFormatGuide(true)}>
+        מדריך עיצוב
+      </button>
+    </div>
+    <div className="app-grid">
+      <section className="workspace-panel" aria-label="תוכן ופרטי הספר">
+        <h2>מקור</h2>
+        <DocReceiver handleReceiveText={handleReceiveText} />
+        <div className="mt-3">
+          <label htmlFor="mdTextarea" className="form-label">
+            או הדבק טקסט להמרה
+          </label>
+          <textarea
+            placeholder="הדבק כאן Markdown או טקסט חופשי..."
+            spellCheck="false"
+            dir="rtl"
+            ref={mdRef}
+            className="form-control text-source"
+            id="mdTextarea"
+            rows={12}
+          />
         </div>
-      </label>
-      <textarea
-        placeholder="או הדבק כאן את תוכן הספר..."
-        spellCheck="false"
-        dir="rtl"
-        ref={mdRef}
-        className="form-control"
-        id="mdTextarea"
-        rows={15}
-      />
+        <div className="toolbar-row">
+          <button type="button" className="btn btn-sm btn-light" onClick={clearText}>נקה</button>
+        </div>
+        <h2>פרטי הספר</h2>
+        <BookInfoInput handleSubmit={handleSubmit} isBusy={submissionStatus === "uploading" || submissionStatus === "processing"} />
+      </section>
+      <aside className="status-panel" aria-label="סטטוס המרה">
+        <h2>סטטוס</h2>
+        <ol className="status-steps">
+          {statusSteps.map((step) => (
+            <li className={submissionStatus === step.key || submissionStatus === "ready" ? "active" : ""} key={step.key}>
+              {step.label}
+            </li>
+          ))}
+        </ol>
+        <div className={`status-message ${submissionStatus}`} aria-live="polite">
+          {statusMessage}
+        </div>
+        <div className="epub-note">
+          <strong>יעד EPUB</strong>
+          <span>עברית RTL, פונט Frank Ruhl Libre, ותקינות EPUB 3.3.</span>
+        </div>
+        <div className="epub-note muted">
+          PDF סרוק ללא שכבת טקסט יזוהה כלא נתמך בשלב הנוכחי. OCR לא כלול בגרסה זו.
+        </div>
+      </aside>
     </div>
-    <div style={{ textAlign: "right" }}>
-      <button type="button" className="btn btn-sm btn-light mt-2" onClick={clearText}>ניקוי</button>
-    </div>
-    <h4>פרטי הספר</h4>
-    <BookInfoInput handleSubmit={handleSubmit} />
-    <div>
-      <samp>{submissionStatus}</samp>
-    </div>
-    <div className="text-center mt-4 text-muted">
+    <footer className="app-footer text-muted">
       <p className="lead">מבוסס על <a className="em-link" href="https://github.com/lingdocs/rtl-epub-maker">RTL EPUB Maker</a></p>
       <p>הקבצים מעובדים זמנית בצד השרת. אין להעלות מסמכים רגישים לפני הפעלה מאובטחת.</p>
-    </div>
+    </footer>
     <FormatGuideModal show={showFormatGuide} onHide={() => setShowFormatGuide(false)} />
-  </div>
+  </main>
 }

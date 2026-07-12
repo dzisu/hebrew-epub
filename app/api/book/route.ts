@@ -14,13 +14,11 @@ export async function POST(request: Request) {
     coverFile && typeof coverFile === "object"
       ? path.join("tmp", coverFile.name)
       : undefined;
+  await fs.promises.mkdir("tmp", { recursive: true });
   // save tmp file
   if (coverFile && typeof coverFile === "object") {
     const arrBuffer = await coverFile.arrayBuffer();
     const buffer = Buffer.from(arrBuffer);
-    if (!fs.existsSync("tmp")) {
-      fs.mkdirSync("tmp");
-    }
     await fs.promises.writeFile(path.join("tmp", coverFile.name), buffer);
   }
   const frontMatter = formData.get("frontmatter") as string;

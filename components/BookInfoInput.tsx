@@ -24,6 +24,17 @@ const otherFields = [
 
 const possibleFields = [...suggestedFields, ...otherFields];
 
+const fieldLabels: Record<string, string> = {
+  title: "כותרת הספר",
+  author: "מחבר",
+  date: "תאריך",
+  description: "תיאור",
+  rights: "זכויות",
+  "belongs-to-collection": "סדרה",
+  editor: "עורך",
+  translator: "מתרגם",
+};
+
 type Option = {
   value: string,
   label: string,
@@ -34,7 +45,13 @@ const baseSettings = {
   "page-progression-direction": "rtl",
 };
 
-function BookInfoInput({ handleSubmit }: { handleSubmit: (info: { frontmatter: Frontmatter, cover: File | undefined }) => void }) {
+function BookInfoInput({
+  handleSubmit,
+  isBusy = false,
+}: {
+  handleSubmit: (info: { frontmatter: Frontmatter, cover: File | undefined }) => void,
+  isBusy?: boolean,
+}) {
   const coverRef = useRef<any>(null);
   const [fieldsChosen, setFieldsChosen] = useState<string[]>(suggestedFields);
   const [state, setState] = useState<Frontmatter>({ lang: "he", language: "he" });
@@ -101,7 +118,7 @@ function BookInfoInput({ handleSubmit }: { handleSubmit: (info: { frontmatter: F
               X
             </button>
           </span>}
-          <span>{field}</span>
+          <span>{fieldLabels[field] || field}</span>
         </label>
         <input onChange={handleFieldChange} type="text" className="form-control" id={field} name={field} value={state[field] || ""} />
       </div>
@@ -119,7 +136,9 @@ function BookInfoInput({ handleSubmit }: { handleSubmit: (info: { frontmatter: F
       options={availableFieldsOptions}
     />
     <LanguageSelect value={state.lang} onChange={handleLanguageChange} />
-    <button onClick={submit} type="button" className="btn btn-lg btn-primary my-4">הורדת EPUB</button>
+    <button disabled={isBusy} onClick={submit} type="button" className="btn btn-lg btn-primary my-4">
+      {isBusy ? "יוצר EPUB..." : "צור EPUB"}
+    </button>
   </div>
 }
 
