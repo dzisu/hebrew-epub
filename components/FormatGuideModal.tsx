@@ -15,36 +15,37 @@ function FormatGuideModal(props: {
     >
       <Modal.Header closeButton>
         <Modal.Title id="contained-modal-title-vcenter">
-          📖 Formatting Guide
+          מדריך עיצוב קצר
         </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <p>
-          You can format the text of the book using <a href="https://www.markdowntutorial.com/">markdown</a>. If you don't know how to use markdown you only need to know two things:
+          אפשר לעצב את הספר באמצעות <a href="https://www.markdowntutorial.com/">Markdown</a>. להמרה בסיסית מספיק להקפיד על שני כללים:
         </p>
         <ol>
-          <li>To make a <strong>chapter heading</strong> put a <samp># </samp> in front of the chapter title.</li>
-          <li>Leave an <strong>empty line between every paragraph</strong>.</li>
+          <li>כדי ליצור <strong>כותרת פרק</strong>, כתוב <samp># </samp> לפני שם הפרק.</li>
+          <li>השאר <strong>שורה ריקה בין פסקאות</strong>.</li>
         </ol>
-        <p>For example:</p>
+        <p>לדוגמה:</p>
         <textarea
           spellCheck="false"
           className="form-control"
           rows={15}
-        >{`# A Chapter Title
+          dir="rtl"
+        >{`# פרק ראשון
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+זו פסקה ראשונה בספר. הטקסט יישמר בכיוון קריאה מימין לשמאל ויומר לקובץ EPUB.
 
-Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+זו פסקה שנייה. חשוב להשאיר שורה ריקה בין הפסקאות.
 
-# Another Chapter
+# פרק שני
 
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
+אפשר להמשיך בפרקים נוספים לפי אותו מבנה.
 `}</textarea>
       </Modal.Body>
       <Modal.Footer>
-        <button type="button" className="btn btn-secondary" onClick={props.onHide}>
-          Close
+        <button type="button" className="secondary-action" onClick={props.onHide}>
+          סגור
         </button>
       </Modal.Footer>
     </Modal>

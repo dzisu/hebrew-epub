@@ -36,9 +36,10 @@ function DocReceiver({ handleReceiveText }: {
   });
   return <div {...getRootProps()} className={`dropzone ${isDragActive ? "active" : ""}`}>
     <input {...getInputProps()} />
-    <div>
+    <div className="dropzone-icon" aria-hidden="true">↑</div>
+    <div className="dropzone-copy">
       <strong>{state ? state : "גרור קובץ לכאן או בחר קובץ"}</strong>
-      <div className="text-muted">Markdown, TXT, DOCX, PDF טקסטואלי או EPUB</div>
+      <span>Markdown, TXT, DOCX, ODT, RTF, PDF טקסטואלי או EPUB</span>
     </div>
   </div>;
 }

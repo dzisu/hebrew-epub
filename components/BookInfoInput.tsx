@@ -106,15 +106,15 @@ function BookInfoInput({
     });
   }
   return <div style={{ maxWidth: "600px" }}>
-    <div className="my-3">
+    <div className="field-block">
       <label htmlFor="cover-file" className="form-label">תמונת כריכה <span className="text-muted">(.jpg או .png עד 5MB)</span></label>
       <input multiple={false} ref={coverRef} className="form-control" type="file" id="cover-file" accept="image/jpeg,image/png" />
     </div>
     {fields.map((field) => (
-      <div className="mb-2" key={field}>
+      <div className="field-block compact" key={field}>
         <label htmlFor={field} className="form-label d-flex flex-row align-items-center">
           {!requiredFields.includes(field) && <span className="me-2">
-            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => handleRemoveField(field)}>
+            <button type="button" className="field-remove" onClick={() => handleRemoveField(field)} aria-label={`הסר ${fieldLabels[field] || field}`}>
               X
             </button>
           </span>}
@@ -123,7 +123,7 @@ function BookInfoInput({
         <input onChange={handleFieldChange} type="text" className="form-control" id={field} name={field} value={state[field] || ""} />
       </div>
     ))}
-    <div className="mt-4 mb-2">הוספת שדות:</div>
+    <div className="field-help">הוספת שדות metadata</div>
     <Select
       className="basic-single"
       classNamePrefix="select"
@@ -136,7 +136,7 @@ function BookInfoInput({
       options={availableFieldsOptions}
     />
     <LanguageSelect value={state.lang} onChange={handleLanguageChange} />
-    <button disabled={isBusy} onClick={submit} type="button" className="btn btn-lg btn-primary my-4">
+    <button disabled={isBusy} onClick={submit} type="button" className="primary-action">
       {isBusy ? "יוצר EPUB..." : "צור EPUB"}
     </button>
   </div>

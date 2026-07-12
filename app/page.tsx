@@ -11,9 +11,9 @@ export type Frontmatter = Record<string, string>;
 type ConversionStatus = "idle" | "uploading" | "processing" | "ready" | "error";
 
 const statusSteps = [
-  { key: "uploading", label: "העלאה" },
-  { key: "processing", label: "המרה" },
-  { key: "ready", label: "מוכן" },
+  { key: "uploading", label: "קליטת מקור" },
+  { key: "processing", label: "בניית EPUB" },
+  { key: "ready", label: "קובץ מוכן" },
 ];
 
 export default function Home() {
@@ -64,64 +64,85 @@ export default function Home() {
     });
   }
   return <main className="app-shell" dir="rtl">
-    <div className="app-header">
-      <div>
-        <h1>יצירת EPUB עברי</h1>
-        <p>המרת מסמכים לספר EPUB תקין וידידותי לעברית.</p>
-      </div>
-      <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setShowFormatGuide(true)}>
-        מדריך עיצוב
-      </button>
-    </div>
-    <div className="app-grid">
-      <section className="workspace-panel" aria-label="תוכן ופרטי הספר">
-        <h2>מקור</h2>
-        <DocReceiver handleReceiveText={handleReceiveText} />
-        <div className="mt-3">
-          <label htmlFor="mdTextarea" className="form-label">
-            או הדבק טקסט להמרה
-          </label>
-          <textarea
-            placeholder="הדבק כאן Markdown או טקסט חופשי..."
-            spellCheck="false"
-            dir="rtl"
-            ref={mdRef}
-            className="form-control text-source"
-            id="mdTextarea"
-            rows={12}
-          />
-        </div>
-        <div className="toolbar-row">
-          <button type="button" className="btn btn-sm btn-light" onClick={clearText}>נקה</button>
-        </div>
-        <h2>פרטי הספר</h2>
-        <BookInfoInput handleSubmit={handleSubmit} isBusy={submissionStatus === "uploading" || submissionStatus === "processing"} />
-      </section>
-      <aside className="status-panel" aria-label="סטטוס המרה">
-        <h2>סטטוס</h2>
-        <ol className="status-steps">
-          {statusSteps.map((step) => (
-            <li className={submissionStatus === step.key || submissionStatus === "ready" ? "active" : ""} key={step.key}>
-              {step.label}
-            </li>
-          ))}
-        </ol>
-        <div className={`status-message ${submissionStatus}`} aria-live="polite">
-          {statusMessage}
-        </div>
-        <div className="epub-note">
-          <strong>יעד EPUB</strong>
-          <span>עברית RTL, פונט Frank Ruhl Libre, ותקינות EPUB 3.3.</span>
-        </div>
-        <div className="epub-note muted">
-          PDF סרוק ללא שכבת טקסט יזוהה כלא נתמך בשלב הנוכחי. OCR לא כלול בגרסה זו.
-        </div>
+    <div className="app-frame">
+      <aside className="rail" aria-label="ניווט פרויקט">
+        <div className="rail-mark" aria-hidden="true">HE</div>
+        <div className="rail-line" />
       </aside>
+      <div className="workspace">
+        <header className="app-header">
+          <div>
+            <p className="eyebrow">Hebrew EPUB Studio</p>
+            <h1>יצירת EPUB עברי</h1>
+            <p>המרת מסמכים לספר EPUB 3.3 בעברית, בכיוון RTL ובטיפוגרפיה מותאמת לקריאה ארוכה.</p>
+          </div>
+          <button type="button" className="icon-button guide-button" onClick={() => setShowFormatGuide(true)} aria-label="פתח מדריך עיצוב">
+            <span aria-hidden="true">?</span>
+          </button>
+        </header>
+        <div className="app-grid">
+          <section className="workspace-panel" aria-label="תוכן ופרטי הספר">
+            <div className="section-heading">
+              <span>01</span>
+              <h2>מקור המסמך</h2>
+            </div>
+            <DocReceiver handleReceiveText={handleReceiveText} />
+            <div className="field-block">
+              <label htmlFor="mdTextarea" className="form-label">
+                או הדבק טקסט להמרה
+              </label>
+              <textarea
+                placeholder="הדבק כאן Markdown או טקסט חופשי..."
+                spellCheck="false"
+                dir="rtl"
+                ref={mdRef}
+                className="form-control text-source"
+                id="mdTextarea"
+                rows={12}
+              />
+            </div>
+            <div className="toolbar-row">
+              <button type="button" className="secondary-action" onClick={clearText}>נקה תוכן</button>
+            </div>
+            <div className="section-heading book-heading">
+              <span>02</span>
+              <h2>פרטי הספר</h2>
+            </div>
+            <BookInfoInput handleSubmit={handleSubmit} isBusy={submissionStatus === "uploading" || submissionStatus === "processing"} />
+          </section>
+          <aside className="status-panel" aria-label="סטטוס המרה">
+            <div className="section-heading">
+              <span>03</span>
+              <h2>בקרה</h2>
+            </div>
+            <ol className="status-steps">
+              {statusSteps.map((step) => (
+                <li className={submissionStatus === step.key || submissionStatus === "ready" ? "active" : ""} key={step.key}>
+                  {step.label}
+                </li>
+              ))}
+            </ol>
+            <div className={`status-message ${submissionStatus}`} aria-live="polite">
+              {statusMessage}
+            </div>
+            <div className="epub-note">
+              <strong>יעד הפקה</strong>
+              <span>EPUB 3.3, עברית RTL, פונט Frank Ruhl Libre, metadata תקין ו־spine מימין לשמאל.</span>
+            </div>
+            <div className="epub-note">
+              <strong>קלט נתמך</strong>
+              <span>Markdown, TXT, DOC/DOCX, ODT, RTF, EPUB קיים ו־PDF עם שכבת טקסט.</span>
+            </div>
+            <div className="epub-note muted">
+              PDF סרוק ללא שכבת טקסט יזוהה כלא נתמך בשלב הנוכחי. OCR לא כלול בגרסה זו.
+            </div>
+          </aside>
+        </div>
+        <footer className="app-footer text-muted">
+          <p>מבוסס על <a className="em-link" href="https://github.com/lingdocs/rtl-epub-maker">RTL EPUB Maker</a>. הקבצים מעובדים זמנית בצד השרת; לפני שימוש במסמכים רגישים נדרשת הפעלה מאובטחת.</p>
+        </footer>
+      </div>
     </div>
-    <footer className="app-footer text-muted">
-      <p className="lead">מבוסס על <a className="em-link" href="https://github.com/lingdocs/rtl-epub-maker">RTL EPUB Maker</a></p>
-      <p>הקבצים מעובדים זמנית בצד השרת. אין להעלות מסמכים רגישים לפני הפעלה מאובטחת.</p>
-    </footer>
     <FormatGuideModal show={showFormatGuide} onHide={() => setShowFormatGuide(false)} />
   </main>
 }

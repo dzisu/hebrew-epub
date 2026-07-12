@@ -4,15 +4,15 @@ import Select from "react-select";
 import { useState } from "react";
 
 const languageOptions = [
-  { value: "he", label: "Hebrew" },
-  { value: "ar", label: "Arabic" },
-  { value: "fa", label: "Farsi" },
-  { value: "prs", label: "Dari" },
-  { value: "ps", label: "Pashto" },
-  { value: "ps-AF", label: "Pashto (Afghanistan) " },
-  { value: "ps-PK", label: "Pashto (Pakistan) " },
-  { value: "ur", label: "Urdu" },
-  { value: "other", label: "Other..." },
+  { value: "he", label: "עברית" },
+  { value: "ar", label: "ערבית" },
+  { value: "fa", label: "פרסית" },
+  { value: "prs", label: "דארי" },
+  { value: "ps", label: "פשטו" },
+  { value: "ps-AF", label: "פשטו - אפגניסטן" },
+  { value: "ps-PK", label: "פשטו - פקיסטן" },
+  { value: "ur", label: "אורדו" },
+  { value: "other", label: "שפה אחרת" },
 ];
 
 function LanguageSelect({ value, onChange }: {
@@ -33,7 +33,7 @@ function LanguageSelect({ value, onChange }: {
     }
   }
   return <div>
-    <div className="mt-4 mb-2">שפה:</div>
+    <div className="field-help">שפת הספר</div>
     <Select
       className="basic-single"
       classNamePrefix="select"
