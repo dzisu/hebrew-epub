@@ -1,7 +1,7 @@
 import { Frontmatter } from "@/app/page";
 import { deleteFile } from "@/lib/backend-file-utils";
 import writeYamlFile from "write-yaml-file";
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import fs from "fs";
 import path from "path";
 
@@ -97,10 +97,53 @@ ${fs.readFileSync(yamlFile, "utf-8")}
     pandoc.on("close", (code) => {
       deleteFile(mdFile, yamlFile, cover);
       if (code === 0) {
-        resolve(epubFile);
+        try {
+          normalizeEpubNavigation(epubFile, ts);
+          resolve(epubFile);
+        } catch (err) {
+          reject(err);
+        }
       } else {
         reject("error making epub with pandoc");
       }
     });
   });
+}
+
+function normalizeEpubNavigation(epubFile: string, ts: string) {
+  const workDir = path.join("tmp", `${ts}-epub`);
+  const outputEpub = path.resolve(epubFile);
+  fs.rmSync(workDir, { recursive: true, force: true });
+  fs.mkdirSync(workDir, { recursive: true });
+  const unzip = spawnSync("unzip", ["-q", epubFile, "-d", workDir], {
+    encoding: "utf-8",
+  });
+  if (unzip.status !== 0) {
+    fs.rmSync(workDir, { recursive: true, force: true });
+    throw new Error(unzip.stderr || "error unpacking epub");
+  }
+
+  stripXhtmlFragments(path.join(workDir, "EPUB", "nav.xhtml"), "href");
+  stripXhtmlFragments(path.join(workDir, "EPUB", "toc.ncx"), "src");
+
+  fs.rmSync(outputEpub, { force: true });
+  const zipMime = spawnSync("zip", ["-q", "-X", "-0", outputEpub, "mimetype"], {
+    cwd: workDir,
+    encoding: "utf-8",
+  });
+  const zipRest = spawnSync("zip", ["-q", "-X", "-r", outputEpub, "META-INF", "EPUB"], {
+    cwd: workDir,
+    encoding: "utf-8",
+  });
+  fs.rmSync(workDir, { recursive: true, force: true });
+  if (zipMime.status !== 0 || zipRest.status !== 0) {
+    throw new Error(zipMime.stderr || zipRest.stderr || "error repacking epub");
+  }
+}
+
+function stripXhtmlFragments(filePath: string, attrName: "href" | "src") {
+  if (!fs.existsSync(filePath)) return;
+  const xml = fs.readFileSync(filePath, "utf-8");
+  const pattern = new RegExp(`${attrName}="([^"]+\\.xhtml)#[^"]*"`, "g");
+  fs.writeFileSync(filePath, xml.replace(pattern, `${attrName}="$1"`), "utf-8");
 }

@@ -18,7 +18,7 @@ RUN npm run build
 # FROM pandoc/core AS runner
 FROM ubuntu AS runner
 RUN DEBIAN_FRONTEND=noninteractive apt-get update
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y curl pandoc poppler-utils
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y curl pandoc poppler-utils unzip zip
 RUN curl -sL https://deb.nodesource.com/setup_24.x -o nodesource_setup.sh
 RUN bash nodesource_setup.sh
 RUN apt install nodejs -y
