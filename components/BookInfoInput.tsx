@@ -1,6 +1,6 @@
 'use client'
 
-import { ChangeEvent, useState, useRef } from "react";
+import { ChangeEvent, useEffect, useState, useRef } from "react";
 import Select from "react-select";
 import LanguageSelect from "./LanguageSelect";
 import { Frontmatter } from "@/app/page";
@@ -48,9 +48,11 @@ const baseSettings = {
 function BookInfoInput({
   handleSubmit,
   isBusy = false,
+  suggestedTitle = "",
 }: {
   handleSubmit: (info: { frontmatter: Frontmatter, cover: File | undefined }) => void,
   isBusy?: boolean,
+  suggestedTitle?: string,
 }) {
   const coverRef = useRef<any>(null);
   const [fieldsChosen, setFieldsChosen] = useState<string[]>(suggestedFields);
@@ -94,6 +96,13 @@ function BookInfoInput({
       };
     });
   }
+  useEffect(() => {
+    if (!suggestedTitle) return;
+    setState((current) => current.title ? current : {
+      ...current,
+      title: suggestedTitle,
+    });
+  }, [suggestedTitle]);
   function submit() {
     const cover = coverRef.current.files[0] as (File | undefined);
     const frontmatter = {

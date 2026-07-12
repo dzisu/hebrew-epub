@@ -2,6 +2,10 @@ import {
   convertUploadedDocumentToMarkdown,
   DocumentConversionError,
 } from "@/lib/document-conversion";
+import {
+  ArticleExtractionError,
+  translateMarkdownToHebrew,
+} from "@/lib/article-extraction";
 
 export const dynamic = "force-static";
 
@@ -17,15 +21,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const markdown = await convertUploadedDocumentToMarkdown({
+    const result = await convertUploadedDocumentToMarkdown({
       name: file.name,
       type: file.type,
       bytes: Buffer.from(await file.arrayBuffer()),
     });
+    const markdown = await translateMarkdownToHebrew(result.markdown);
 
-    return Response.json({ ok: true, ...markdown });
+    return Response.json({ ok: true, ...result, markdown });
   } catch (error) {
     if (error instanceof DocumentConversionError) {
+      return Response.json(
+        { ok: false, code: error.code, problem: error.message },
+        { status: error.status },
+      );
+    }
+
+    if (error instanceof ArticleExtractionError) {
       return Response.json(
         { ok: false, code: error.code, problem: error.message },
         { status: error.status },

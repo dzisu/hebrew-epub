@@ -118,3 +118,43 @@ export function uploadDoc(
   }
   return { cancel };
 }
+
+export function importUrl(
+  url: string,
+  callback: {
+    progress: (message: string) => void;
+    error: (problem?: string) => void;
+    complete: (result: { markdown: string; title?: string }) => void;
+  },
+): { cancel: () => void } {
+  const controller = new AbortController();
+  callback.progress("מייבא את הכתבה...");
+  fetch(apiPath("/api/url"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url }),
+    signal: controller.signal,
+  })
+    .then(async (response) => {
+      const result = await response.json();
+      if (!response.ok || result.ok === false) {
+        callback.error(result.problem);
+        return;
+      }
+      callback.complete({
+        markdown: result.markdown,
+        title: result.source?.title,
+      });
+    })
+    .catch((error) => {
+      if (error?.name === "AbortError") return;
+      console.error(error);
+      callback.error("ייבוא הקישור נכשל.");
+    });
+
+  return {
+    cancel() {
+      controller.abort();
+    },
+  };
+}

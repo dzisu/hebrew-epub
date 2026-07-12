@@ -236,6 +236,25 @@ textarea {
   font-size: 0.94rem;
 }
 
+.source-receiver {
+  display: grid;
+  gap: 14px;
+}
+
+.url-import {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfbf8;
+}
+
+.url-import-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
 .field-block {
   margin-top: 16px;
 }
@@ -470,5 +489,9 @@ textarea {
   .dropzone-icon {
     width: 42px;
     height: 42px;
+  }
+
+  .url-import-row {
+    grid-template-columns: 1fr;
   }
 }

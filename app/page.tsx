@@ -19,15 +19,18 @@ const statusSteps = [
 export default function Home() {
   const mdRef = useRef<any>(null);
   const [showFormatGuide, setShowFormatGuide] = useState<boolean>(false);
+  const [suggestedTitle, setSuggestedTitle] = useState<string>("");
   const [submissionStatus, setSubmissionStatus] = useState<ConversionStatus>("idle");
   const [statusMessage, setStatusMessage] = useState<string>("בחר קובץ או הדבק טקסט כדי להתחיל.");
-  function handleReceiveText(m: string) {
+  function handleReceiveText(m: string, title?: string) {
     mdRef.current.value = m;
+    if (title) setSuggestedTitle(title);
     setSubmissionStatus("idle");
     setStatusMessage("התוכן נטען. אפשר להשלים פרטי ספר וליצור EPUB.");
   }
   function clearText() {
     mdRef.current.value = "";
+    setSuggestedTitle("");
     setSubmissionStatus("idle");
     setStatusMessage("בחר קובץ או הדבק טקסט כדי להתחיל.");
   }
@@ -108,7 +111,11 @@ export default function Home() {
               <span>02</span>
               <h2>פרטי הספר</h2>
             </div>
-            <BookInfoInput handleSubmit={handleSubmit} isBusy={submissionStatus === "uploading" || submissionStatus === "processing"} />
+            <BookInfoInput
+              handleSubmit={handleSubmit}
+              isBusy={submissionStatus === "uploading" || submissionStatus === "processing"}
+              suggestedTitle={suggestedTitle}
+            />
           </section>
           <aside className="status-panel" aria-label="סטטוס המרה">
             <div className="section-heading">
@@ -131,7 +138,7 @@ export default function Home() {
             </div>
             <div className="epub-note">
               <strong>קלט נתמך</strong>
-              <span>Markdown, TXT, DOC/DOCX, ODT, RTF, EPUB קיים ו־PDF עם שכבת טקסט.</span>
+              <span>URL של כתבה, Markdown, TXT, DOC/DOCX, ODT, RTF, EPUB קיים ו־PDF עם שכבת טקסט.</span>
             </div>
             <div className="epub-note muted">
               PDF סרוק ללא שכבת טקסט יזוהה כלא נתמך בשלב הנוכחי. OCR לא כלול בגרסה זו.
