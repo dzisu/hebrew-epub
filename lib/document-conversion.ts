@@ -132,15 +132,19 @@ async function convertFileToMarkdown(
 
 async function convertWithPandoc(inputPath: string, from?: string) {
   const outputPath = path.join(path.dirname(inputPath), `${randomUUID()}.md`);
+  const mediaDir = path.join(path.dirname(inputPath), `${randomUUID()}-media`);
   const args = ["-s", inputPath, "-t", "markdown", "-o", outputPath];
 
   if (from) {
     args.splice(2, 0, "-f", from);
   }
 
+  args.splice(args.indexOf("-o"), 0, `--extract-media=${mediaDir}`);
+
   try {
     await runCommand("pandoc", args);
-    return fs.promises.readFile(outputPath, "utf8");
+    const markdown = await fs.promises.readFile(outputPath, "utf8");
+    return inlineExtractedMedia(removeUnsupportedRawImageBlocks(markdown), mediaDir);
   } catch (error) {
     if (isCommandMissing(error)) {
       throw new DocumentConversionError(
@@ -155,6 +159,73 @@ async function convertWithPandoc(inputPath: string, from?: string) {
       "Could not convert this document to Markdown.",
       422,
     );
+  }
+}
+
+function removeUnsupportedRawImageBlocks(markdown: string) {
+  return markdown
+    .replace(/^\[\]\{#[^}\n]+\.xhtml\}\s*$/gim, "")
+    .replace(/<svg\b[\s\S]*?<\/svg>/gi, "")
+    .replace(/<div>\s*<\/div>/gi, "")
+    .replace(/\[\]\{\.image\s+\.placeholder[^}]*\}\s*/gi, "")
+    .replace(/`<image\b[\s\S]*?<\/image>`\{=html\}\s*/gi, "");
+}
+
+function inlineExtractedMedia(markdown: string, mediaDir: string) {
+  return markdown.replace(
+    /!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g,
+    (match, alt: string, target: string) => {
+      if (isExternalOrDataResource(target)) return match;
+
+      const imagePath = resolveMarkdownResource(target, mediaDir);
+      if (!imagePath) return "";
+
+      const mediaType = mediaTypeForImage(imagePath);
+      if (!mediaType) return "";
+
+      const stat = fs.statSync(imagePath);
+      if (stat.size > 2 * 1024 * 1024) return "";
+
+      const encoded = fs.readFileSync(imagePath).toString("base64");
+      return `![${alt}](data:${mediaType};base64,${encoded})`;
+    },
+  );
+}
+
+function resolveMarkdownResource(target: string, mediaDir: string) {
+  try {
+    const cleanTarget = decodeURIComponent(target.split("#")[0]);
+    const candidates = path.isAbsolute(cleanTarget)
+      ? [cleanTarget]
+      : [
+          path.join(mediaDir, cleanTarget),
+          path.join(path.dirname(mediaDir), cleanTarget),
+        ];
+    return candidates.find((candidate) => fs.existsSync(candidate));
+  } catch {
+    return undefined;
+  }
+}
+
+function isExternalOrDataResource(target: string) {
+  return /^(?:https?:|data:|mailto:)/i.test(target);
+}
+
+function mediaTypeForImage(filePath: string) {
+  switch (path.extname(filePath).toLowerCase()) {
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".png":
+      return "image/png";
+    case ".gif":
+      return "image/gif";
+    case ".webp":
+      return "image/webp";
+    case ".svg":
+      return "image/svg+xml";
+    default:
+      return undefined;
   }
 }
 

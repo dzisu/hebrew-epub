@@ -135,6 +135,7 @@ function normalizeEpubNavigation(epubFile: string, ts: string) {
   stripXhtmlFragments(path.join(workDir, "EPUB", "toc.ncx"), "src");
   normalizePackageDocument(path.join(workDir, "EPUB"));
   normalizeXhtmlFiles(path.join(workDir, "EPUB"));
+  normalizePackageSvgProperties(path.join(workDir, "EPUB"));
   sanitizeEpubCss(path.join(workDir, "EPUB"));
   embedLocalFonts(path.join(workDir, "EPUB"));
 
@@ -220,9 +221,84 @@ function normalizeXhtmlFiles(epubDir: string) {
     }
 
     xhtml = normalizeReadingDirection(xhtml);
+    xhtml = removeMissingXhtmlResourceReferences(filePath, xhtml, epubDir);
     assertNonEmptyXhtmlBody(filePath, xhtml);
     fs.writeFileSync(filePath, xhtml, "utf-8");
   }
+}
+
+function removeMissingXhtmlResourceReferences(
+  filePath: string,
+  xhtml: string,
+  epubDir: string,
+) {
+  const removeMissingImg = (match: string, src: string) =>
+    isMissingEpubResource(filePath, src, epubDir) ? "" : match;
+
+  return xhtml
+    .replace(
+      /<p\b[^>]*>\s*<img\b[^>]*\bsrc="([^"]+)"[^>]*\/?>\s*<\/p>/gi,
+      removeMissingImg,
+    )
+    .replace(/<img\b[^>]*\bsrc="([^"]+)"[^>]*\/?>/gi, removeMissingImg)
+    .replace(/<svg\b[\s\S]*?<\/svg>/gi, (match) => {
+      const refs = Array.from(
+        match.matchAll(/\b(?:href|xlink:href)="([^"]+)"/gi),
+        (ref) => ref[1],
+      );
+      return refs.some((ref) => isMissingEpubResource(filePath, ref, epubDir))
+        ? ""
+        : match;
+    });
+}
+
+function isMissingEpubResource(filePath: string, target: string, epubDir: string) {
+  if (/^(?:https?:|data:|mailto:)/i.test(target)) return false;
+
+  try {
+    const cleanTarget = decodeURIComponent(target.split("#")[0]);
+    if (!cleanTarget) return false;
+
+    const resolved = path.resolve(path.dirname(filePath), cleanTarget);
+    const root = path.resolve(epubDir);
+    if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
+      return true;
+    }
+
+    return !fs.existsSync(resolved);
+  } catch {
+    return true;
+  }
+}
+
+function normalizePackageSvgProperties(epubDir: string) {
+  const opfFile = findPackageDocument(epubDir);
+  const opf = fs.readFileSync(opfFile, "utf-8");
+  fs.writeFileSync(opfFile, normalizeManifestSvgProperties(opf, epubDir), "utf-8");
+}
+
+function normalizeManifestSvgProperties(opf: string, epubDir: string) {
+  return opf.replace(
+    /<item\b([^>]*\bhref="([^"]+)"[^>]*\bproperties="([^"]*\bsvg\b[^"]*)"[^>]*)\/>/g,
+    (match, attrs: string, href: string, properties: string) => {
+      const itemPath = path.join(epubDir, href);
+      if (!fs.existsSync(itemPath) || fs.readFileSync(itemPath, "utf-8").includes("<svg")) {
+        return match;
+      }
+
+      const nextProperties = properties
+        .split(/\s+/)
+        .filter((property) => property && property !== "svg")
+        .join(" ");
+      if (nextProperties) {
+        return match.replace(
+          `properties="${properties}"`,
+          `properties="${nextProperties}"`,
+        );
+      }
+      return `<item${attrs.replace(/\sproperties="[^"]*"/, "")}/>`;
+    },
+  );
 }
 
 function normalizeReadingDirection(xhtml: string) {
