@@ -37,7 +37,12 @@ export function bookRequest(
     formData.append("file", req.cover);
   }
   xhr.onload = () => {
-    callback.complete();
+    const contentType = xhr.getResponseHeader("content-type") || "";
+    if (!xhr.status.toString().startsWith("2") || !contentType.includes("application/epub+zip")) {
+      console.error("EPUB generation failed", xhr.status, contentType);
+      callback.error();
+      return;
+    }
     const url = window.URL.createObjectURL(xhr.response);
     const a = document.createElement("a");
     a.href = url;
@@ -45,6 +50,8 @@ export function bookRequest(
     document.body.appendChild(a);
     a.click();
     a.remove();
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    callback.complete();
   };
   xhr.upload.addEventListener(
     "progress",

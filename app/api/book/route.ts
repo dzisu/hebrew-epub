@@ -8,49 +8,57 @@ import path from "path";
 export const dynamic = "force-static";
 
 export async function POST(request: Request) {
-  const formData = await request.formData();
-  const coverFile = formData.get("file") as File;
-  const cover =
-    coverFile && typeof coverFile === "object"
-      ? path.join("tmp", coverFile.name)
-      : undefined;
-  await fs.promises.mkdir("tmp", { recursive: true });
-  // save tmp file
-  if (coverFile && typeof coverFile === "object") {
-    const arrBuffer = await coverFile.arrayBuffer();
-    const buffer = Buffer.from(arrBuffer);
-    await fs.promises.writeFile(path.join("tmp", coverFile.name), buffer);
+  let cover: string | undefined;
+  try {
+    const formData = await request.formData();
+    const coverFile = formData.get("file") as File;
+    cover =
+      coverFile && typeof coverFile === "object"
+        ? path.join("tmp", coverFile.name)
+        : undefined;
+    await fs.promises.mkdir("tmp", { recursive: true });
+    // save tmp file
+    if (coverFile && typeof coverFile === "object") {
+      const arrBuffer = await coverFile.arrayBuffer();
+      const buffer = Buffer.from(arrBuffer);
+      await fs.promises.writeFile(path.join("tmp", coverFile.name), buffer);
+    }
+    const frontMatter = formData.get("frontmatter") as string;
+    const content = formData.get("content") as string;
+    const toDownload = await makeEpub(
+      content,
+      JSON.parse(frontMatter) as Frontmatter,
+      cover,
+    );
+    const stat = fs.statSync(toDownload);
+    const stream = fs.createReadStream(toDownload);
+    const webStream = new ReadableStream({
+      start(controller) {
+        stream.on("data", (chunk) => controller.enqueue(chunk));
+        stream.on("end", () => {
+          controller.close();
+          deleteFile(toDownload);
+        });
+        stream.on("error", (err) => {
+          controller.error(err);
+          deleteFile(toDownload);
+        });
+      },
+    });
+    return new Response(webStream, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/epub+zip",
+        "Content-Length": stat.size.toString(),
+        "Content-Disposition": `attachment; filename=${path.basename(toDownload)}`,
+      },
+    });
+  } catch (err) {
+    deleteFile(cover);
+    const problem = err instanceof Error ? err.message : "error making epub";
+    console.error(problem);
+    return Response.json({ ok: false, problem }, { status: 500 });
   }
-  const frontMatter = formData.get("frontmatter") as string;
-  const content = formData.get("content") as string;
-  const toDownload = await makeEpub(
-    content,
-    JSON.parse(frontMatter) as Frontmatter,
-    cover,
-  );
-  const stat = fs.statSync(toDownload);
-  const stream = fs.createReadStream(toDownload);
-  const webStream = new ReadableStream({
-    start(controller) {
-      stream.on("data", (chunk) => controller.enqueue(chunk));
-      stream.on("end", () => {
-        controller.close();
-        deleteFile(toDownload);
-      });
-      stream.on("error", (err) => {
-        controller.error(err);
-        deleteFile(toDownload);
-      });
-    },
-  });
-  return new Response(webStream, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/epub+zip",
-      "Content-Length": stat.size.toString(),
-      "Content-Disposition": `attachment; filename=${path.basename(toDownload)}`,
-    },
-  });
 }
 
 function makeEpub(
@@ -312,6 +320,8 @@ function sanitizeEpubCss(epubDir: string) {
 }
 
 function assertNonEmptyXhtmlBody(filePath: string, xhtml: string) {
+  if (isGeneratedNonReadingPage(filePath)) return;
+
   const body = xhtml.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)?.[1] || "";
   const text = body
     .replace(/<script[\s\S]*?<\/script>/gi, "")
@@ -323,6 +333,11 @@ function assertNonEmptyXhtmlBody(filePath: string, xhtml: string) {
   if (!text) {
     throw new Error(`EPUB content file has an empty body: ${filePath}`);
   }
+}
+
+function isGeneratedNonReadingPage(filePath: string) {
+  const name = path.basename(filePath).toLowerCase();
+  return name === "cover.xhtml" || name === "nav.xhtml";
 }
 
 function embedLocalFonts(epubDir: string) {
